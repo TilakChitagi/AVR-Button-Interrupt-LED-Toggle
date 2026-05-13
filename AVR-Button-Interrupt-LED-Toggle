@@ -1,0 +1,48 @@
+/*
+ * Description: Toggles an LED on PD7 using an external interrupt on PD2 (INT0).
+ * Trigger: Falling edge (button press to ground).
+ */
+
+#define F_CPU 16000000UL      // Define CPU clock speed (16MHz)
+#include <avr/io.h>           // Standard AVR I/O header
+#include <avr/interrupt.h>    // Required for ISR and interrupt functions
+
+// Volatile keyword ensures the compiler doesn't optimize out this variable,
+// as it is modified within an Interrupt Service Routine (ISR).
+volatile uint8_t ledState = 0;
+
+// ISR for External Interrupt Request 0 (Pin PD2)
+// This runs automatically when the hardware detects a falling edge on the pin.
+ISR(INT0_vect)
+{
+    ledState ^= 1;  // Toggle the state (0 becomes 1, 1 becomes 0)
+
+    if (ledState)
+        PORTD |= (1 << PD7);  // Set PD7 HIGH (Turn LED ON)
+    else
+        PORTD &= ~(1 << PD7); // Set PD7 LOW (Turn LED OFF)
+}
+
+int main(void)
+{
+    // --- GPIO Configuration ---
+    DDRD |= (1 << PD7);    // Set PD7 as Output (LED)
+    DDRD &= ~(1 << PD2);   // Set PD2 as Input (Button)
+    PORTD |= (1 << PD2);   // Enable internal pull-up resistor on PD2
+
+    // --- Interrupt Configuration ---
+    // ISC01 = 1, ISC00 = 0: Configures INT0 to trigger on a falling edge
+    EICRA |= (1 << ISC01); 
+    
+    // Enable External Interrupt Request 0
+    EIMSK |= (1 << INT0);  
+    
+    // Enable Global Interrupts (Set the I-bit in SREG)
+    sei();                 
+
+    while (1)
+    {
+        // The CPU stays idle here; the hardware handles the button press logic.
+        // This is significantly more power-efficient than polling the pin status.
+    }
+}
